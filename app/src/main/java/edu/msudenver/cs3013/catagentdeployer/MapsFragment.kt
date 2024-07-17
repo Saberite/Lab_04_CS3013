@@ -1,21 +1,25 @@
 package edu.msudenver.cs3013.catagentdeployer
 
 import android.Manifest.permission.ACCESS_FINE_LOCATION
+import android.annotation.SuppressLint
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.location.Location
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.util.Log
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.DrawableRes
 import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.DrawableCompat
+import androidx.fragment.app.Fragment
 import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
 
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
@@ -24,50 +28,54 @@ import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.BitmapDescriptor
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.LatLng
-import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
 import edu.msudenver.cs3013.catagentdeployer.databinding.ActivityMapsBinding
 
-class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
+class MapsFragment : Fragment(), OnMapReadyCallback {
 
     private lateinit var mMap: GoogleMap
     private lateinit var binding: ActivityMapsBinding
-    //Added variable slide 13
     private lateinit var requestPermissionLauncher: ActivityResultLauncher<String>
-    //Added Marker 7.2 slide 13
-    private var marker: Marker? = null
-
-    //Added variable from slide 8 Lecture 7.2
-    private val fusedLocationProviderClient by lazy { LocationServices.getFusedLocationProviderClient(this)
+    private val fusedLocationProviderClient by lazy {
+        LocationServices.getFusedLocationProviderClient(requireContext())
     }
 
-    override fun onCreate(savedInstanceState: Bundle?) {
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View? {
+        binding = ActivityMapsBinding.inflate(layoutInflater)
+        return binding.root
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        binding = ActivityMapsBinding.inflate(layoutInflater)
-        setContentView(binding.root)
-
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
-        val mapFragment = supportFragmentManager
-            .findFragmentById(R.id.map) as SupportMapFragment
+        val mapFragment = childFragmentManager.findFragmentById(R.id.map) as SupportMapFragment
         mapFragment.getMapAsync(this)
-
-
-        //Add
-        requestPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) {
-                isGranted ->
-            if (isGranted) {
-                getLocation()
-            } else {
-                showPermissionRationale {
-                    requestPermissionLauncher.launch(ACCESS_FINE_LOCATION)
+        requestPermissionLauncher =
+            registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+                if (isGranted) {
+                    getLastLocation()
+                } else {
+                    // if should show rationale, show it
+                    if (shouldShowRequestPermissionRationale(ACCESS_FINE_LOCATION)) {
+                        showPermissionRationale {
+                            requestPermissionLauncher.launch(ACCESS_FINE_LOCATION)
+                        }
+                    }
                 }
             }
-        }
-
-
-
     }
+    private fun hasLocationPermission() =
+        //check if ACCESS_FINE_LOCATION permission is granted
+        ContextCompat.checkSelfPermission(
+            requireContext(),
+            ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+
 
     /**
      * Manipulates the map once available.
@@ -78,18 +86,10 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
      * it inside the SupportMapFragment. This method will only be triggered once the user has
      * installed Google Play services and returned to the app.
      */
-    //Added mMap change from 7.2 slide 18
     override fun onMapReady(googleMap: GoogleMap) {
-        mMap = googleMap.apply {
-            setOnMapClickListener { latLng ->
-                addOrMoveSelectedPositionMarker(latLng)
-            }
-        }
-
-
-        //Added when cond, Checks if app has permissions Return true/false slide 15
+        mMap = googleMap
         when {
-            hasLocationPermission() -> getLocation()
+            hasLocationPermission() -> getLastLocation()
             shouldShowRequestPermissionRationale(ACCESS_FINE_LOCATION) -> {
                 showPermissionRationale {
                     requestPermissionLauncher.launch(ACCESS_FINE_LOCATION)
@@ -97,51 +97,48 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
             }
             else -> requestPermissionLauncher.launch(ACCESS_FINE_LOCATION)
         }
-
-        // Add a marker in Sydney and move the camera
-        //val sydney = LatLng(-34.0, 151.0)
-        //mMap.addMarker(MarkerOptions().position(sydney).title("Marker in Sydney"))
-        //mMap.moveCamera(CameraUpdateFactory.newLatLng(sydney))
     }
 
 
-    //Requesting Location Permission Slide 8. Added getLocation From Line 96
-    //Changed for 7.2 with fusedLocation slide 11 From Line 97 to 103
-    //Changed to add Val CO 7.2 lecture from slide 12
-    private fun getLocation() {
-        //Log.d("MapsActivity", "getLocation() called.")
-        //fusedLocationProviderClient.lastLocation.addOnSuccessListener {
-                //location: Location? ->
-            //location?.let {
-               // val userLocation = LatLng(location.latitude, location.longitude)
-               // updateMapLocation(userLocation)
-               // addMarkerAtLocation(userLocation, "You")
-           // }}
-
-        val CO = LatLng(39.0, -105.0)
-        updateMapLocation(CO)
-        addMarkerAtLocation(CO, "You")
-
-
+    @SuppressLint("MissingPermission")
+    private fun getLastLocation() {
+        //fused location last location with addOnFailureListener and addOnCanceledListener listeners added
+        fusedLocationProviderClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
+            .addOnSuccessListener { location: Location? ->
+                location?.let {
+                    val currentLocation = LatLng(it.latitude, it.longitude)
+                    updateMapLocation(currentLocation)
+                    addMarkerAtLocation(currentLocation, "Current Location")
+                    //zoom in
+                    mMap.animateCamera(CameraUpdateFactory.zoomTo(15f))
+                }
+            }
     }
 
-    //Added updateMap Slide 10 Lecture 7.2
+    private fun showPermissionRationale(
+        positiveAction: () -> Unit
+    ) {
+        AlertDialog.Builder(requireContext())
+            .setTitle("Location permission")
+            .setMessage("We need your permission to find your current position")
+            .setPositiveButton(android.R.string.ok) { _, _ ->
+                positiveAction()
+            }
+            .setNegativeButton(android.R.string.cancel) { dialog, _ ->
+                dialog.dismiss()
+            }
+            .create().show()
+    }
+
     private fun updateMapLocation(location: LatLng) {
         mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(location, 7f))
     }
+    private fun addMarkerAtLocation(location: LatLng, title: String) {
+        mMap.addMarker(MarkerOptions().title(title).position(location))
+    }
 
-    //Added addMarker at location slide 10 Lecture 7.2
-    //private fun addMarkerAtLocation(location: LatLng, title: String)
-    //{
-        //mMap.addMarker(MarkerOptions().title(title).position(location))
-    //}
-
-    //Added addMarkerAtLocation 7.2 slide 13
-    private fun addMarkerAtLocation(location: LatLng, title: String, markerIcon: BitmapDescriptor? = null
-    ) = mMap.addMarker(
-        MarkerOptions().title(title).position(location)
-            .apply { markerIcon?.let { icon(markerIcon) } }
-    )
+    //Above is the new code from Lab 04
+    //Section below is from 7.1 example
 
     //Added BitmapDescrip func 7.2 slide 14
     private fun getBitmapDescriptorFromVector(@DrawableRes
@@ -177,26 +174,5 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         } else { marker?.apply { position = latLng } }
     }
 
-    //Added Permission location. Allows permission to location Slide 14
-    private fun hasLocationPermission() =
-//check if ACCESS_FINE_LOCATION permission is granted
-        ContextCompat.checkSelfPermission(this, ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
-
-
-    //Added showPermission Slide 11
-    private fun showPermissionRationale(
-        positiveAction: () -> Unit
-    ) {
-        AlertDialog.Builder(this)
-            .setTitle("Location permission")
-            .setMessage("We need your permission to find your current position")
-            .setPositiveButton(android.R.string.ok) { _, _ ->
-                positiveAction()
-            }
-            .setNegativeButton(android.R.string.cancel) { dialog, _ ->
-                dialog.dismiss()
-            }
-            .create().show()
-    }
 
 }
