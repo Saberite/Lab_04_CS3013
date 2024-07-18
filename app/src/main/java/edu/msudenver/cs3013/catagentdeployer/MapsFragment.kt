@@ -28,6 +28,7 @@ import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.BitmapDescriptor
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
 import edu.msudenver.cs3013.catagentdeployer.databinding.ActivityMapsBinding
 
@@ -36,6 +37,9 @@ class MapsFragment : Fragment(), OnMapReadyCallback {
     private lateinit var mMap: GoogleMap
     private lateinit var binding: ActivityMapsBinding
     private lateinit var requestPermissionLauncher: ActivityResultLauncher<String>
+    //Added Marker 7.2 slide 13
+    private var marker: Marker? = null
+
     private val fusedLocationProviderClient by lazy {
         LocationServices.getFusedLocationProviderClient(requireContext())
     }
@@ -143,7 +147,7 @@ class MapsFragment : Fragment(), OnMapReadyCallback {
     //Added BitmapDescrip func 7.2 slide 14
     private fun getBitmapDescriptorFromVector(@DrawableRes
                                               vectorDrawableResourceId: Int): BitmapDescriptor? {
-        val bitmap = ContextCompat.getDrawable(this,
+        val bitmap = ContextCompat.getDrawable(requireContext(),
             vectorDrawableResourceId)?.let { vectorDrawable ->
             vectorDrawable.setBounds(0, 0,
                 vectorDrawable.intrinsicWidth,
@@ -166,12 +170,8 @@ class MapsFragment : Fragment(), OnMapReadyCallback {
     }
 
     //Added drawable icon add on, Called on when function above is used. 7.2 slide 18
-    private fun addOrMoveSelectedPositionMarker(latLng: LatLng) {
-        if (marker == null) {
-            marker = addMarkerAtLocation(latLng, "Deploy here",
-                getBitmapDescriptorFromVector(R.drawable.baseline_approval_24)
-            )
-        } else { marker?.apply { position = latLng } }
+    private fun addMarkerAtLocation(location: LatLng, title: String, icon: BitmapDescriptor?): Marker {
+        return mMap.addMarker(MarkerOptions().title(title).position(location).icon(icon))!!
     }
 
 
