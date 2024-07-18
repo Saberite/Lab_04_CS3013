@@ -43,6 +43,10 @@ dependencies {
     //Added Implmentation from 7.2 lecture slide 4
     implementation ("com.google.android.gms:play-services-location:21.0.1")
 
+    //Added dependency for activityViewFragment
+    implementation ("androidx.lifecycle:lifecycle-viewmodel-ktx:2.4.1")
+    implementation ("androidx.fragment:fragment-ktx:1.4.1")
+
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
