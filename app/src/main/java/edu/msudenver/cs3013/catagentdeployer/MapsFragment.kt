@@ -20,7 +20,6 @@ import androidx.core.graphics.drawable.DrawableCompat
 import androidx.fragment.app.Fragment
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
-
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
@@ -37,8 +36,8 @@ class MapsFragment : Fragment(), OnMapReadyCallback {
     private lateinit var mMap: GoogleMap
     private lateinit var binding: ActivityMapsBinding
     private lateinit var requestPermissionLauncher: ActivityResultLauncher<String>
-    //Added Marker 7.2 slide 13
     private var marker: Marker? = null
+    private var carMarker: Marker? = null
 
     private val fusedLocationProviderClient by lazy {
         LocationServices.getFusedLocationProviderClient(requireContext())
@@ -73,23 +72,13 @@ class MapsFragment : Fragment(), OnMapReadyCallback {
                 }
             }
     }
+
     private fun hasLocationPermission() =
-        //check if ACCESS_FINE_LOCATION permission is granted
         ContextCompat.checkSelfPermission(
             requireContext(),
             ACCESS_FINE_LOCATION
         ) == PackageManager.PERMISSION_GRANTED
 
-
-    /**
-     * Manipulates the map once available.
-     * This callback is triggered when the map is ready to be used.
-     * This is where we can add markers or lines, add listeners or move the camera. In this case,
-     * we just add a marker near Sydney, Australia.
-     * If Google Play services is not installed on the device, the user will be prompted to install
-     * it inside the SupportMapFragment. This method will only be triggered once the user has
-     * installed Google Play services and returned to the app.
-     */
     override fun onMapReady(googleMap: GoogleMap) {
         mMap = googleMap
         when {
@@ -103,25 +92,21 @@ class MapsFragment : Fragment(), OnMapReadyCallback {
         }
     }
 
-
     @SuppressLint("MissingPermission")
     private fun getLastLocation() {
-        //fused location last location with addOnFailureListener and addOnCanceledListener listeners added
         fusedLocationProviderClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
             .addOnSuccessListener { location: Location? ->
                 location?.let {
                     val currentLocation = LatLng(it.latitude, it.longitude)
                     updateMapLocation(currentLocation)
-                    addMarkerAtLocation(currentLocation, "Current Location")
-                    //zoom in
+                    val customIcon = getBitmapDescriptorFromVector(R.drawable.car_icon)
+                    addMarkerAtLocation(currentLocation, "You", customIcon)
                     mMap.animateCamera(CameraUpdateFactory.zoomTo(15f))
                 }
             }
     }
 
-    private fun showPermissionRationale(
-        positiveAction: () -> Unit
-    ) {
+    private fun showPermissionRationale(positiveAction: () -> Unit) {
         AlertDialog.Builder(requireContext())
             .setTitle("Location permission")
             .setMessage("We need your permission to find your current position")
@@ -137,25 +122,16 @@ class MapsFragment : Fragment(), OnMapReadyCallback {
     private fun updateMapLocation(location: LatLng) {
         mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(location, 7f))
     }
-    private fun addMarkerAtLocation(location: LatLng, title: String) {
-        mMap.addMarker(MarkerOptions().title(title).position(location))
+
+    private fun addMarkerAtLocation(location: LatLng, title: String, icon: BitmapDescriptor? = null) {
+        mMap.addMarker(MarkerOptions().title(title).position(location).icon(icon))
     }
 
-    //Above is the new code from Lab 04
-    //Section below is from 7.1 example
-
-    //Added BitmapDescrip func 7.2 slide 14
-    private fun getBitmapDescriptorFromVector(@DrawableRes
-                                              vectorDrawableResourceId: Int): BitmapDescriptor? {
-        val bitmap = ContextCompat.getDrawable(requireContext(),
-            vectorDrawableResourceId)?.let { vectorDrawable ->
-            vectorDrawable.setBounds(0, 0,
-                vectorDrawable.intrinsicWidth,
-                vectorDrawable.intrinsicHeight)
-            val drawableWithTint = DrawableCompat
-                .wrap(vectorDrawable)
-            DrawableCompat.setTint(drawableWithTint,
-                Color.RED)
+    private fun getBitmapDescriptorFromVector(@DrawableRes vectorDrawableResourceId: Int): BitmapDescriptor? {
+        val bitmap = ContextCompat.getDrawable(requireContext(), vectorDrawableResourceId)?.let { vectorDrawable ->
+            vectorDrawable.setBounds(0, 0, vectorDrawable.intrinsicWidth, vectorDrawable.intrinsicHeight)
+            val drawableWithTint = DrawableCompat.wrap(vectorDrawable)
+            DrawableCompat.setTint(drawableWithTint, Color.BLACK)
             val bitmap = Bitmap.createBitmap(
                 vectorDrawable.intrinsicWidth,
                 vectorDrawable.intrinsicHeight,
@@ -164,15 +140,7 @@ class MapsFragment : Fragment(), OnMapReadyCallback {
             val canvas = Canvas(bitmap)
             drawableWithTint.draw(canvas)
             bitmap
-        }?: return null
+        } ?: return null
         return BitmapDescriptorFactory.fromBitmap(bitmap)
-            .also { bitmap?.recycle() }
     }
-
-    //Added drawable icon add on, Called on when function above is used. 7.2 slide 18
-    private fun addMarkerAtLocation(location: LatLng, title: String, icon: BitmapDescriptor?): Marker {
-        return mMap.addMarker(MarkerOptions().title(title).position(location).icon(icon))!!
-    }
-
-
 }
