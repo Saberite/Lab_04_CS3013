@@ -48,12 +48,12 @@ class MapsFragment : Fragment(), OnMapReadyCallback {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-        binding = ActivityMapsBinding.inflate(layoutInflater)
+        binding = ActivityMapsBinding.inflate(inflater, container, false)
         return binding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
+        super.onViewCreated(view, savedInstanceState)
 
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
         val mapFragment = childFragmentManager.findFragmentById(R.id.map) as SupportMapFragment
@@ -73,6 +73,16 @@ class MapsFragment : Fragment(), OnMapReadyCallback {
             }
     }
 
+    private fun addOrMoveSelectedPositionMarker(latLng: LatLng) {
+        if (marker == null) {
+            marker = addMarkerAtLocation(latLng, "Deploy here",
+                getBitmapDescriptorFromVector(R.drawable.baseline_approval_24)
+            )
+        } else {
+            marker?.position = latLng
+        }
+    }
+
     private fun hasLocationPermission() =
         ContextCompat.checkSelfPermission(
             requireContext(),
@@ -89,6 +99,11 @@ class MapsFragment : Fragment(), OnMapReadyCallback {
                 }
             }
             else -> requestPermissionLauncher.launch(ACCESS_FINE_LOCATION)
+        }
+
+        // Add a map click listener
+        mMap.setOnMapClickListener { latLng ->
+            addOrMoveSelectedPositionMarker(latLng)
         }
     }
 
@@ -123,8 +138,8 @@ class MapsFragment : Fragment(), OnMapReadyCallback {
         mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(location, 7f))
     }
 
-    private fun addMarkerAtLocation(location: LatLng, title: String, icon: BitmapDescriptor? = null) {
-        mMap.addMarker(MarkerOptions().title(title).position(location).icon(icon))
+    private fun addMarkerAtLocation(location: LatLng, title: String, icon: BitmapDescriptor? = null): Marker? {
+        return mMap.addMarker(MarkerOptions().title(title).position(location).icon(icon))
     }
 
     private fun getBitmapDescriptorFromVector(@DrawableRes vectorDrawableResourceId: Int): BitmapDescriptor? {
