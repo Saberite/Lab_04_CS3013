@@ -18,6 +18,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.DrawableCompat
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.activityViewModels
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.google.android.gms.maps.CameraUpdateFactory
@@ -38,6 +39,9 @@ class MapsFragment : Fragment(), OnMapReadyCallback {
     private lateinit var requestPermissionLauncher: ActivityResultLauncher<String>
     private var marker: Marker? = null
     private var carMarker: Marker? = null
+
+    // SharedViewModel is what is being used to share data between fragments
+    private val sharedViewModel: SharedParkingViewModel by activityViewModels()
 
     private val fusedLocationProviderClient by lazy {
         LocationServices.getFusedLocationProviderClient(requireContext())
@@ -75,12 +79,14 @@ class MapsFragment : Fragment(), OnMapReadyCallback {
 
     private fun addOrMoveSelectedPositionMarker(latLng: LatLng) {
         if (marker == null) {
-            marker = addMarkerAtLocation(latLng, "Deploy here",
+            marker = addMarkerAtLocation(latLng, "Parked here",
                 getBitmapDescriptorFromVector(R.drawable.baseline_approval_24)
             )
         } else {
             marker?.position = latLng
         }
+        // added this line to update the parking location in the SharedViewModel
+        sharedViewModel.updateParkingLocation("Lat: ${latLng.latitude}, Lng: ${latLng.longitude}")
     }
 
     private fun hasLocationPermission() =
@@ -158,4 +164,6 @@ class MapsFragment : Fragment(), OnMapReadyCallback {
         } ?: return null
         return BitmapDescriptorFactory.fromBitmap(bitmap)
     }
+
+
 }
